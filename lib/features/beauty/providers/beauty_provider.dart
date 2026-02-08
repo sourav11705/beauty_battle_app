@@ -4,9 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// TODO: REPLACE WITH YOUR ACTUAL GEMINI API KEY
-const String _kGeminiApiKey = 'AIzaSyB-JPvNVORiXSEsgWfzZWtzPh7yz-CnLy4';
+// API Key loaded from .env file
+final String _kGeminiApiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
 
 enum AnalysisStatus { initial, analyzing, done, error }
 
@@ -91,8 +92,8 @@ class BeautyNotifier extends Notifier<BeautyState> {
 
   Future<void> analyzeBeauty() async {
     if (state.challengers.isEmpty) return;
-    if (_kGeminiApiKey.contains('TODO')) {
-       state = state.copyWith(status: AnalysisStatus.error, error: "Missing API Key. Please open lib/features/beauty/providers/beauty_provider.dart and enter your Gemini API Key.");
+    if (_kGeminiApiKey.isEmpty || _kGeminiApiKey.contains('TODO')) {
+       state = state.copyWith(status: AnalysisStatus.error, error: "Missing API Key. Please create a .env file with GEMINI_API_KEY=<KEY>.");
        return;
     }
 

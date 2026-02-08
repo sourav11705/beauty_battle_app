@@ -45,6 +45,7 @@ dependencies:
   confetti: ^0.8.0
   video_player: ^2.10.1
   google_mobile_ads: ^6.0.0
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -86,6 +87,7 @@ flutter:
   assets:
      - anim/
      - anim/photo/
+     - .env
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
