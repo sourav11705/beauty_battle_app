@@ -3,8 +3,6 @@
 import 'dart:async';
 import 'dart:io';
 
-
-
 import 'package:beauty_compare/core/widgets/glitter_background.dart';
 import 'package:beauty_compare/core/widgets/looping_video.dart';
 import 'package:beauty_compare/core/widgets/text_slideshow.dart';
@@ -14,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
@@ -29,199 +28,304 @@ class HomeScreen extends ConsumerWidget {
     // Listen for errors
     ref.listen(beautyProvider, (previous, next) {
       if (next.status == AnalysisStatus.error) {
-        // If we are on the AnalyzingScreen, we might need to pop it? 
-        // But since AnalyzingScreen handles its own state mostly, we just show snackbar here if visible,
-        // or let AnalyzingScreen handle it. 
-        // Ideally, AnalyzingScreen listens to error and pops itself.
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error ?? 'Unknown error'), 
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(label: 'Dismiss', onPressed: () {}, textColor: Colors.white),
-          ),
-        );
+        if (context.mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.error ?? 'Unknown error'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              action: SnackBarAction(label: 'Dismiss', onPressed: () {}, textColor: Colors.white),
+            ),
+          );
+        }
       }
     });
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('✨ BEAUTY BATTLE AI ✨'),
+        title: Text(
+          'BEAUTY BATTLE AI',
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2.0,
+            fontSize: 22,
+            shadows: [Shadow(color: Theme.of(context).colorScheme.primary, blurRadius: 10)]
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.7),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [
           const GlitterBackground(),
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                 TextSlideshow(
-                  texts: const [
-                    "Who is the Fairest?",
-                    "✨ Mirror Mirror on the Wall... ✨",
-                    "🔥 Slay or Nay? 🔥",
-                    "👑 Claims the Throne? 👑",
-                  ], 
-                  colors: const [
-                    Color(0xFFFFD700), // Gold
-                    Color(0xFFE040FB), // Neon Purple
-                    Color(0xFF00E5FF), // Cyan
-                    Color(0xFFFF4081), // Pink
-                  ]
-                ),
-                 
-                const Gap(10),
-                Text(
-                  "Upload selfies to compare beauty, detect perfections, and get expert advice!",
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ).animate().fade(delay: 300.ms).slideY(begin: 0.2, end: 0),
-                const Gap(30),
-    
-                // Challenger List
-                if (state.challengers.isNotEmpty)
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Calculate width to ensure 2 items fit side-by-side with spacing
-                      // Spacing = 15. Padding is already 20*2=40 parent. 
-                      // Available width = constraints.maxWidth
-                      // ItemWidth = (AvailableWidth - Spacing) / 2
-                      final double itemWidth = (constraints.maxWidth - 15) / 2;
-                      
-                      return Wrap(
-                        spacing: 15,
-                        runSpacing: 15,
-                        children: [
-                          ...state.challengers.asMap().entries.map((entry) {
-                            return Stack(
-                              children: [
-                                _ImageSlot(
-                                  image: entry.value,
-                                  label: "Challenger ${entry.key + 1}",
-                                  size: itemWidth,
-                                  width: itemWidth,
-                                  height: itemWidth,
-                                ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: Colors.red,
-                                    child: IconButton(
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                                      onPressed: () => notifier.removeChallenger(entry.key),
-                                    ),
-                                  ).animate().fade(delay: 200.ms).scale(),
-                                ),
-                              ],
-                            );
-                          }),
-                          GestureDetector(
-                            onTap: () => _showImageSourceModal(context, notifier),
-                            child: Container(
-                              width: itemWidth,
-                              height: itemWidth,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5), width: 1),
-                                boxShadow: [
-                                  BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), blurRadius: 10),
-                                ]
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    height: 60, width: 60,
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(30),
-                                      child: const LoopingVideo(assetPath: 'anim/photo/original-5d3c16d01f5054b2d4d60ac58f965dea.mov')
-                                    )
-                                  ),
-                                  const Gap(5),
-                                  Text("Add", style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14)),
-                                ],
-                              ),
-                            ),
-                          ).animate().fade().slideX(begin: 0.2, end: 0, duration: 500.ms),
-                        ],
-                      );
-                    }
-                  )
-                else
-                   Center(
-                     child: Column(
-                       children: [
-                         const Gap(20),
-                         GestureDetector(
-                            onTap: () => _showImageSourceModal(context, notifier),
-                            child: _ImageSlot(
-                              label: "Add First Challenger", 
-                              isMain: true,
-                              size: 220,
-                              onTap: () => _showImageSourceModal(context, notifier),
-                            )
-                         ).animate(onPlay: (c) => c.repeat(reverse: true))
-                          .shimmer(duration: 3.seconds, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
-                          .scaleXY(begin: 1, end: 1.02),
-                       ],
-                     ),
-                   ),
-    
-                const Gap(50),
-    
-                // Judge Button
-                ElevatedButton(
-                  onPressed: state.challengers.isNotEmpty
-                      ? () {
-                          notifier.analyzeBeauty();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const AnalyzingScreen()),
-                          );
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          
+          // Main Content
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Gap(10),
+                  TextSlideshow(
+                    texts: const [
+                      "Who Reigns Supreme?",
+                      "✨ Mirror Mirror... ✨",
+                      "🔥 Scale of 1 to 10? 🔥",
+                      "👑 Claims the Crown? 👑",
+                    ], 
+                    colors: const [
+                      Color(0xFFFFD700), // Gold
+                      Color(0xFFE040FB), // Neon Purple
+                      Color(0xFF00E5FF), // Cyan
+                      Color(0xFFFF4081), // Pink
+                    ]
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  
+                  const Gap(20),
+                  
+                  // Brief Description Card
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: Text(
+                      "Upload photos to let AI judge beauty, find flaws, and roast your friends with savage honesty.",
+                      style: GoogleFonts.inter(fontSize: 14, color: Colors.white70, height: 1.5),
+                      textAlign: TextAlign.center,
+                    ),
+                  ).animate().fade().slideY(begin: 0.2, end: 0),
+
+                  const Gap(30),
+
+                  // Challenger Arena Title
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                       const Flexible(
-                         child: Text("🔥 ROAST & RANK 🔥", 
-                           style: TextStyle(fontSize: 18, letterSpacing: 1.2),
-                           textAlign: TextAlign.center,
-                         )
-                       ),
-                       const Gap(10),
-                       if (state.challengers.isEmpty) const Icon(Icons.lock, size:20) else const Icon(Icons.auto_awesome, size: 20),
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const Gap(10),
+                      Text("THE ARENA", style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Colors.white)),
+                      const Gap(10),
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
                     ],
+                  ).animate().fadeIn(delay: 200.ms),
+                  
+                  const Gap(20),
+
+                  // Dynamic Challenger Layout
+                  if (state.challengers.isEmpty) ...[
+                     _buildEmptyState(context, notifier),
+                  ] else ...[
+                     _buildChallengerGrid(context, state.challengers, notifier),
+                  ],
+
+                  const Gap(40),
+
+                  // Action Button
+                  Center(
+                    child: _buildJudgeButton(context, state, notifier),
                   ),
-                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                .scaleXY(begin: 1.0, end: 1.1, duration: 800.ms)
-                .boxShadow(
-                    begin: const BoxShadow(color: Colors.transparent, blurRadius: 0, spreadRadius: 0),
-                    end: BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6), blurRadius: 30, spreadRadius: 5),
-                 )
-                .shimmer(duration: 2.seconds, color: Colors.white),
-                
-                if (state.challengers.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
-                    child: Text("Please upload at least one photo", textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
-                  ),
-                
-                const Gap(20),
-              ],
+                  
+                  const Gap(30),
+                  
+                  if (state.challengers.isEmpty)
+                    Text(
+                      "Add at least 1 photo to start",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
+                    ),
+                  const Gap(20),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildEmptyState(BuildContext context, BeautyNotifier notifier) {
+    return GestureDetector(
+      onTap: () => _showImageSourceModal(context, notifier),
+      child: Container(
+        height: 250,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), width: 1),
+          boxShadow: [
+            BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 0),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+             Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              ),
+              child: Icon(Icons.add_a_photo_outlined, size: 40, color: Theme.of(context).colorScheme.primary),
+             ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 1.seconds),
+             const Gap(20),
+             Text("Tap to Enter the Arena", style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+             const Gap(5),
+             Text("Upload the first challenger", style: GoogleFonts.inter(fontSize: 12, color: Colors.white54)),
+          ],
+        ),
+      ),
+    ).animate().fade(duration: 500.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  Widget _buildChallengerGrid(BuildContext context, List<XFile> challengers, BeautyNotifier notifier) {
+    return Column(
+      children: [
+        // Grid of images
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 15,
+            mainAxisSpacing: 15,
+            childAspectRatio: 0.85,
+          ),
+          itemCount: challengers.length + 1, // Add +1 for the "Add" button
+          itemBuilder: (context, index) {
+            if (index == challengers.length) {
+              // The "Add" button at the end
+              return GestureDetector(
+                onTap: () => _showImageSourceModal(context, notifier),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white24, style: BorderStyle.solid),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, size: 40, color: Colors.white54),
+                      const Gap(5),
+                      Text("Add More", style: GoogleFonts.inter(color: Colors.white54, fontSize: 12))
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            final image = challengers[index];
+            return Stack(
+              children: [
+                _ImageSlot(
+                   image: image,
+                   label: "Player ${index + 1}",
+                   width: double.infinity,
+                   height: double.infinity,
+                ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                
+                Positioned(
+                  top: 5, right: 5,
+                  child: GestureDetector(
+                    onTap: () => notifier.removeChallenger(index),
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
+                
+                // Rank Badge Placeholder (optional style)
+                Positioned(
+                  top: 5, left: 5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      "#${index + 1}",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJudgeButton(BuildContext context, dynamic state, BeautyNotifier notifier) {
+    final bool isEnabled = state.challengers.isNotEmpty;
+    
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: isEnabled ? [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+            blurRadius: 30,
+            spreadRadius: 2,
+          )
+        ] : [],
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: ElevatedButton(
+        onPressed: isEnabled
+            ? () {
+                notifier.analyzeBeauty();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const AnalyzingScreen()),
+                );
+              }
+            : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isEnabled ? Theme.of(context).colorScheme.primary : Colors.grey.withValues(alpha: 0.2),
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 22),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          elevation: isEnabled ? 10 : 0,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "ROAST & RANK",
+              style: GoogleFonts.outfit(
+                fontSize: 18, 
+                fontWeight: FontWeight.bold, 
+                letterSpacing: 1.5
+              ),
+            ),
+            const Gap(10),
+            Icon(isEnabled ? Icons.auto_awesome : Icons.lock, size: 24),
+          ],
+        ),
+      ),
+    ).animate(target: isEnabled ? 1 : 0).scaleXY(end: 1.05, duration: 200.ms);
   }
 }
 
@@ -230,62 +334,29 @@ class HomeScreen extends ConsumerWidget {
 class _ImageSlot extends StatelessWidget {
   final XFile? image;
   final String label;
-  final bool isMain;
-  final double? size;
   final double? width;
   final double? height;
-  final VoidCallback? onTap;
 
-  const _ImageSlot({this.image, required this.label, this.isMain = false, this.size, this.width, this.height, this.onTap});
+  const _ImageSlot({this.image, required this.label, this.width, this.height});
 
   @override
   Widget build(BuildContext context) {
-    final double defaultSize = size ?? (isMain ? 200 : 100);
-    final double viewWidth = width ?? defaultSize;
-    final double viewHeight = height ?? defaultSize;
-    
     return Container(
-      width: viewWidth,
-      height: viewHeight,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: image != null ? Theme.of(context).colorScheme.primary : Colors.grey.withValues(alpha: 0.3),
-          width: image != null ? 3 : 1
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1
         ),
-        boxShadow: image != null ? [
-          BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2)
-        ] : [],
         image: image != null ? DecorationImage(
           image: FileImage(File(image!.path)),
           fit: BoxFit.cover,
         ) : null,
       ),
-      child: image == null ? Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // If label is "Add First Challenger" (main), show video
-          if (isMain) 
-             SizedBox(
-              height: 100, width: 100,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(50),
-                child: const LoopingVideo(assetPath: 'anim/photo/original-5d3c16d01f5054b2d4d60ac58f965dea.mov')
-              )
-            )
-          else
-            Icon(Icons.person_add, size: viewWidth * 0.3, color: Colors.grey),
-            
-          if (label.isNotEmpty) ...[
-            const Gap(10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            ),
-          ]
-        ],
-      ) : null,
+      child: image == null ? Center(child: Text(label, style: const TextStyle(color: Colors.grey))) : null,
     );
   }
 }
@@ -301,18 +372,30 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
   RewardedInterstitialAd? _rewardedInterstitialAd;
   bool _isAdShowing = false;
   bool _isResultReady = false;
-  bool _isAdLoading = true; // Track loading state
+  bool _isAdLoading = true;
+  Timer? _adTimeoutTimer;
 
   @override
   void initState() {
     super.initState();
-    // Load the ad immediately
     _loadAd();
+    
+    // Safety timeout: If ad takes too long (e.g., 8 seconds), proceed anyway.
+    // This prevents the user from being stuck on this screen forever.
+    _adTimeoutTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted && _isAdLoading) {
+        debugPrint("Ad loading timed out. Proceeding...");
+        setState(() {
+          _isAdLoading = false;
+        });
+        _checkNavigation();
+      }
+    });
   }
 
   void _loadAd() {
     RewardedInterstitialAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5354046379', // Test ID for Rewarded Interstitial
+      adUnitId: 'ca-app-pub-3940256099942544/5354046379', // Test ID
       request: const AdRequest(),
       rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
         onAdLoaded: (ad) {
@@ -322,8 +405,8 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
           }
           debugPrint('AdMob Loaded');
           setState(() {
-            _rewardedInterstitialAd = ad;
-            _isAdLoading = false;
+             _rewardedInterstitialAd = ad;
+             _isAdLoading = false;
           });
           
           _rewardedInterstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
@@ -346,15 +429,12 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
             onAdShowedFullScreenContent: (ad) {
               setState(() {
                 _isAdShowing = true;
-                _isAdLoading = false; // Just in case
+                _isAdLoading = false;
               });
             },
           );
 
-          // Show the ad roughly when it loads, matching user request "shown in that time when ai is analysing"
-          _rewardedInterstitialAd!.show(onUserEarnedReward: (ad, reward) {
-            // Reward logic if any (optional for this app)
-          });
+          _rewardedInterstitialAd!.show(onUserEarnedReward: (ad, reward) {});
         },
         onAdFailedToLoad: (LoadAdError error) {
           debugPrint('AdMob load failed: $error');
@@ -370,9 +450,6 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
   }
   
   void _checkNavigation() {
-    // Navigate only if result is ready and we are not waiting for ad to load or show
-    // We wait for ad to load (_isAdLoading) to give it a chance to show.
-    // If ad is loading, we don't navigate yet, effectively "pausing" until ad succeeds or fails.
     if (_isResultReady && !_isAdShowing && !_isAdLoading) {
        Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const ResultScreen()),
@@ -382,13 +459,13 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
 
   @override
   void dispose() {
+    _adTimeoutTimer?.cancel();
     _rewardedInterstitialAd?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch for analysis completion
     ref.listen(beautyProvider, (previous, next) {
       if (next.status == AnalysisStatus.done && next.result != null) {
         setState(() {
@@ -396,7 +473,6 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
         });
         _checkNavigation();
       } else if (next.status == AnalysisStatus.error) {
-        // If error, pop back to home
         Navigator.of(context).pop();
       }
     });
@@ -408,7 +484,6 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-               // Slideshow of videos
                SizedBox(
                  width: 300, height: 300,
                  child: ClipRRect(
@@ -425,12 +500,10 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
               const Gap(40),
               Text(
                 "Analyzing Features...",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
+                style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
               ).animate(onPlay: (c)=>c.repeat()).shimmer(duration: 2.seconds, color: Colors.white),
               const Gap(10),
-              const Text("Checking Symmetry...", style: TextStyle(color: Colors.white70)),
-              const Gap(5),
-              const Text("Consulting Beauty Algorithms...", style: TextStyle(color: Colors.white70)),
+              Text("Using advanced AI models...", style: GoogleFonts.inter(color: Colors.white54)),
             ],
           ),
         ),
@@ -468,20 +541,25 @@ class _VideoSlideshowState extends State<_VideoSlideshow> {
   }
 
   Future<void> _initializeVideos() async {
-    for (var path in widget.videos) {
-      final controller = VideoPlayerController.asset(
-        path,
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-      );
-      _controllers[path] = controller;
-      await controller.initialize();
-      controller.setLooping(true);
-      controller.play(); // Auto-play everything so they are ready
-    }
-    if (mounted) {
-      setState(() {
-         _initialized = true;
-      });
+    try {
+      for (var path in widget.videos) {
+        final controller = VideoPlayerController.asset(
+          path,
+          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+        );
+        _controllers[path] = controller;
+        await controller.initialize();
+        controller.setLooping(true);
+        controller.setVolume(0); // Mute loop videos prevents audio focus issues
+        controller.play();
+      }
+      if (mounted) {
+        setState(() {
+           _initialized = true;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error initializing videos: $e");
     }
   }
 
@@ -496,7 +574,7 @@ class _VideoSlideshowState extends State<_VideoSlideshow> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized) return Container(color: Colors.black);
+    if (!_initialized) return Container(color: Colors.black12);
 
     final currentPath = widget.videos[_currentIndex];
     final controller = _controllers[currentPath];
@@ -515,20 +593,20 @@ void _showImageSourceModal(BuildContext context, BeautyNotifier notifier) {
   showModalBottomSheet(
     context: context,
     backgroundColor: const Color(0xFF1E1E1E),
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
     builder: (context) {
       return Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Select Image Source", style: Theme.of(context).textTheme.titleLarge),
-            const Gap(20),
+            Text("Select Source", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Gap(30),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _SourceButton(
-                  icon: Icons.camera_alt, 
+                  icon: Icons.camera_alt_outlined, 
                   label: "Camera", 
                   onTap: () {
                     Navigator.pop(context);
@@ -536,7 +614,7 @@ void _showImageSourceModal(BuildContext context, BeautyNotifier notifier) {
                   }
                 ),
                 _SourceButton(
-                  icon: Icons.photo_library, 
+                  icon: Icons.photo_library_outlined, 
                   label: "Gallery", 
                   onTap: () {
                     Navigator.pop(context);
@@ -563,19 +641,19 @@ class _SourceButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
         decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.white24)
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white12)
         ),
         child: Column(
           children: [
-            Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
+            Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
             const Gap(10),
-            Text(label, style: const TextStyle(color: Colors.white)),
+            Text(label, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
