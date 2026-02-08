@@ -158,7 +158,7 @@ class _WinnerCard extends StatelessWidget {
           const Gap(20),
           CircleAvatar(
             radius: 80,
-            backgroundImage: FileImage(winnerImage),
+            backgroundImage: ResizeImage(FileImage(winnerImage), width: 300),
           ).animate(onPlay: (c)=>c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withValues(alpha: 0.5)),
           const Gap(20),
           MarkdownBody(data: reason, styleSheet: MarkdownStyleSheet(p: const TextStyle(fontSize: 16))),
@@ -255,7 +255,10 @@ class _AnalysisCard extends StatelessWidget {
                          decoration: BoxDecoration(
                            borderRadius: BorderRadius.circular(15),
                            border: rank == 1 ? Border.all(color: const Color(0xFFFFD700), width: 2) : null,
-                           image: DecorationImage(image: FileImage(image!), fit: BoxFit.cover),
+                           image: DecorationImage(
+                             image: ResizeImage(FileImage(image!), width: 200),
+                             fit: BoxFit.cover
+                           ),
                          ),
                        ),
                      const Gap(15),

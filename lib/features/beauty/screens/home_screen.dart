@@ -352,7 +352,7 @@ class _ImageSlot extends StatelessWidget {
           width: 1
         ),
         image: image != null ? DecorationImage(
-          image: FileImage(File(image!.path)),
+          image: ResizeImage(FileImage(File(image!.path)), width: 400),
           fit: BoxFit.cover,
         ) : null,
       ),
@@ -369,7 +369,7 @@ class AnalyzingScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
-  RewardedInterstitialAd? _rewardedInterstitialAd;
+  RewardedAd? _rewardedAd; // Changed to RewardedAd
   bool _isAdShowing = false;
   bool _isResultReady = false;
   bool _isAdLoading = true;
@@ -378,6 +378,12 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
   @override
   void initState() {
     super.initState();
+    // Register test device to ensure ads load during development/testing
+    // This solves "No Fill" errors common with new Ad Units.
+    MobileAds.instance.updateRequestConfiguration(
+      RequestConfiguration(testDeviceIds: ['0A53A05132210847', 'EF27C5A377150005BB39077274092484'])
+    );
+    
     _loadAd();
     
     // Safety timeout: If ad takes too long (e.g., 8 seconds), proceed anyway.
@@ -394,10 +400,10 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
   }
 
   void _loadAd() {
-    RewardedInterstitialAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5354046379', // Test ID
+    RewardedAd.load( // Changed to RewardedAd.load
+      adUnitId: 'ca-app-pub-7621618027309121/2058622748', // User provided ID
       request: const AdRequest(),
-      rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
+      rewardedAdLoadCallback: RewardedAdLoadCallback( // Changed to RewardedAdLoadCallback
         onAdLoaded: (ad) {
           if (!mounted) {
             ad.dispose();
@@ -405,16 +411,16 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
           }
           debugPrint('AdMob Loaded');
           setState(() {
-             _rewardedInterstitialAd = ad;
+             _rewardedAd = ad;
              _isAdLoading = false;
           });
           
-          _rewardedInterstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+          _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback( // Updated callback attachment
             onAdDismissedFullScreenContent: (ad) {
               ad.dispose();
               setState(() {
                 _isAdShowing = false;
-                _rewardedInterstitialAd = null;
+                _rewardedAd = null;
               });
               _checkNavigation();
             },
@@ -422,7 +428,7 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
               ad.dispose();
               setState(() {
                 _isAdShowing = false;
-                _rewardedInterstitialAd = null;
+                _rewardedAd = null;
               });
               _checkNavigation();
             },
@@ -434,11 +440,18 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
             },
           );
 
-          _rewardedInterstitialAd!.show(onUserEarnedReward: (ad, reward) {});
+          _rewardedAd!.show(onUserEarnedReward: (ad, reward) {}); // Show the ad
         },
         onAdFailedToLoad: (LoadAdError error) {
           debugPrint('AdMob load failed: $error');
           if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                 content: Text('Ad Failed to Load: ${error.message} (Code: ${error.code})'),
+                 backgroundColor: Colors.red,
+                 duration: const Duration(seconds: 4),
+               ),
+             );
              setState(() {
                _isAdLoading = false;
              });
@@ -460,7 +473,7 @@ class _AnalyzingScreenState extends ConsumerState<AnalyzingScreen> {
   @override
   void dispose() {
     _adTimeoutTimer?.cancel();
-    _rewardedInterstitialAd?.dispose();
+    _rewardedAd?.dispose(); // Dispose RewardedAd
     super.dispose();
   }
 
@@ -534,7 +547,14 @@ class _VideoSlideshowState extends State<_VideoSlideshow> {
     _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (mounted && _initialized) {
         setState(() {
+          // Pause previous
+          _controllers[widget.videos[_currentIndex]]?.pause();
+          
+          // Advance index
           _currentIndex = (_currentIndex + 1) % widget.videos.length;
+          
+          // Play next
+          _controllers[widget.videos[_currentIndex]]?.play();
         });
       }
     });
@@ -542,7 +562,9 @@ class _VideoSlideshowState extends State<_VideoSlideshow> {
 
   Future<void> _initializeVideos() async {
     try {
-      for (var path in widget.videos) {
+      // Initialize all but only play the first one
+      for (var i = 0; i < widget.videos.length; i++) {
+        final path = widget.videos[i];
         final controller = VideoPlayerController.asset(
           path,
           videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
@@ -550,9 +572,13 @@ class _VideoSlideshowState extends State<_VideoSlideshow> {
         _controllers[path] = controller;
         await controller.initialize();
         controller.setLooping(true);
-        controller.setVolume(0); // Mute loop videos prevents audio focus issues
-        controller.play();
+        controller.setVolume(0);
+        
+        if (i == 0) {
+          controller.play(); // Only play the first one initially
+        }
       }
+      
       if (mounted) {
         setState(() {
            _initialized = true;

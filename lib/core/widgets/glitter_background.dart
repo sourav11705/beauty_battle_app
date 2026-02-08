@@ -28,7 +28,7 @@ class GlitterBackground extends StatelessWidget {
          .shimmer(duration: 5.seconds, color: Colors.white10),
 
         // Random Glitter Stars
-        ...List.generate(30, (index) => _RandomStar(index: index)),
+        ...List.generate(15, (index) => _RandomStar(index: index)),
       ],
     );
   }
